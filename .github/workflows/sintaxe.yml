@@ -1,0 +1,24 @@
+name: Sintaxe
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sintaxe:
+    name: Análise de sintaxe do PowerShell
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir todos os scripts e módulos
+        shell: pwsh
+        run: |
+          $erros = 0
+          Get-ChildItem -Recurse -Include *.ps1, *.psm1 -File | ForEach-Object {
+            $e = $null; $t = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$t, [ref]$e)
+            if ($e.Count) { $erros++; Write-Host "ERRO em $($_.FullName): $($e[0].Message) (linha $($e[0].Extent.StartLineNumber))" }
+            else { Write-Host "ok  $($_.FullName)" }
+          }
+          if ($erros) { exit 1 }
