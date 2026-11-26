@@ -1,0 +1,12 @@
+# configuracao real do ambiente (copie de config.example.json)
+config.json
+
+# logs (tem nomes de usuarios)
+logs/*
+!logs/.gitkeep
+
+# backups, atalhos gerados e saidas
+*.zip
+Atalhos/
+*.lnk
+*.png

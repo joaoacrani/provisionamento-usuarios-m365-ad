@@ -1,0 +1,61 @@
+{
+    "_comentario": "Configuração do Sistema de Provisionamento — contoso.com / corp.contoso.local",
+
+    "Domain": "contoso.com",
+    "TenantId": "00000000-0000-0000-0000-000000000000",
+    "ClientId": "00000000-0000-0000-0000-000000000000",
+
+    "_comentario_AD": "DC01 é o PDC principal. DC02 é o secundário (fallback). Script tenta DC01 primeiro.",
+    "ADDomain": "corp.contoso.local",
+    "ADPrimaryServer": "DC01.corp.contoso.local",
+    "ADFallbackServer": "DC02.corp.contoso.local",
+    "ADDefaultOU": "OU=Contoso,DC=corp,DC=contoso,DC=local",
+
+    "_comentario_OUs": "OUs válidas para usuários — raiz de cada filial. PCs, Grupos, Cargos, Domain Controllers e Ex-Usuários são excluídas automaticamente do menu.",
+    "ADUserOUs": [
+        { "Label": "MTZ — Matriz",        "DN": "OU=MTZ,OU=Contoso,DC=corp,DC=contoso,DC=local" },
+        { "Label": "FL1 — Filial 1",   "DN": "OU=FL1,OU=Contoso,DC=corp,DC=contoso,DC=local" },
+        { "Label": "FL2 — Filial 2",          "DN": "OU=FL2,OU=Contoso,DC=corp,DC=contoso,DC=local" },
+        { "Label": "FL3 — Filial 3",          "DN": "OU=FL3,OU=Contoso,DC=corp,DC=contoso,DC=local" },
+        { "Label": "TI  — Tecnologia",        "DN": "OU=TI,OU=Contoso,DC=corp,DC=contoso,DC=local" },
+        { "Label": "Contoso (raiz)",           "DN": "OU=Contoso,DC=corp,DC=contoso,DC=local" },
+        { "Label": "ContosoExterno",           "DN": "OU=ContosoExterno,DC=corp,DC=contoso,DC=local" }
+    ],
+
+    "UsageLocation": "BR",
+    "_comentario_DL": "Segundos que o script espera a caixa existir no Exchange antes de adicionar às listas de distribuição.",
+    "DistributionListWaitSeconds": 300,
+    "LogRetentionDays": 90,
+
+    "_comentario_Assinatura": "Assinatura de e-mail gerada a partir dos modelos .cdr (requer CorelDRAW instalado). OUMatch escolhe o modelo sugerido pela OU do usuário.",
+    "Signature": {
+        "TemplatesFolder": "\\\\fileserver\\Compartilhado\\Assinaturas\\Modelos",
+        "SaveRoot": "\\\\fileserver\\Compartilhado\\Assinaturas\\Assinaturas 2026",
+        "CorelProgId": "CorelDRAW.Application.22",
+        "Templates": [
+            { "Key": "MTZ", "Label": "Matriz",      "File": "Modelo MTZ.cdr",       "SaveFolder": "Matriz",      "OUMatch": "OU=MTZ," },
+            { "Key": "FL1", "Label": "Filial 1", "File": "Modelo FL1.cdr",       "SaveFolder": "Filial 1", "OUMatch": "OU=FL1," },
+            { "Key": "FL2", "Label": "Filial 2",       "File": "Modelo FL2.cdr", "SaveFolder": "Filial 2",       "OUMatch": "OU=FL2," },
+            { "Key": "FL3", "Label": "Filial 3",  "File": "Modelo FL3.cdr",       "SaveFolder": "Filial 3",       "OUMatch": "OU=FL3," }
+        ]
+    },
+
+    "GraphScopes": [
+        "User.ReadWrite.All",
+        "Directory.ReadWrite.All",
+        "Organization.Read.All",
+        "UserAuthenticationMethod.ReadWrite.All",
+        "User.RevokeSessions.All"
+    ],
+
+    "_comentario_ExUsuarios": "Desligamento: DN da OU Ex-Usuários. Se vazio, o script procura uma OU chamada Ex-Usuários no AD.",
+    "ADExUsersOU": "",
+
+    "_nota_seguranca": "Nunca armazene senhas ou secrets neste arquivo. Use Azure Key Vault ou Windows Credential Manager para produção.",
+
+    "_futuro_KeyVault": {
+        "Enabled": false,
+        "VaultName": "",
+        "SecretName": ""
+    }
+}
