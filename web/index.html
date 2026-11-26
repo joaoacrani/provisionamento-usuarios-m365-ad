@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provisionamento de Usuários</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #ffffff; --text: #1d2433; --muted: #5d6779; --line: #dde2ea;
+    --accent: #1f5fbf; --accent-soft: #e6eefb; --ok: #1d7a46; --ok-soft: #e3f4ea;
+    --warn: #9a6200; --warn-soft: #fdf2dc; --err: #b42318; --err-soft: #fde8e6;
+    --radius: 10px; --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #9aa3b2; --line: #2c3340;
+      --accent: #6a9cf0; --accent-soft: #1f2b40; --ok: #5cc28a; --ok-soft: #173025;
+      --warn: #e2b04a; --warn-soft: #34290f; --err: #f07b70; --err-soft: #3a1c1a;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 24px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.demo { background: var(--warn-soft); color: var(--warn); }
+  .layout { display: grid; grid-template-columns: 240px 1fr; gap: 24px; max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } nav.steps { display: flex; overflow-x: auto; } nav.steps button span.lbl { display: none; } }
+  nav.steps { display: flex; flex-direction: column; gap: 4px; }
+  nav.steps button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+  nav.steps button:disabled { cursor: default; opacity: .55; }
+  nav.steps button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  nav.steps button:not(:disabled):not(.active):hover { background: var(--card); }
+  nav.steps .num { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 1.5px solid currentColor; }
+  nav.steps button.done .num { background: var(--ok); border-color: var(--ok); color: #fff; }
+  main .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; }
+  h2 { margin: 0 0 4px; font-size: 20px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  label.f { display: block; font-weight: 600; margin: 16px 0 6px; font-size: 14px; }
+  input[type=text], input[type=password], input[type=search], textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit;
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  textarea { min-height: 110px; resize: vertical; font-family: Consolas, "Cascadia Mono", monospace; font-size: 14px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .row > .grow { flex: 1; min-width: 200px; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .msg { font-size: 13px; margin-top: 6px; }
+  .msg.ok { color: var(--ok); } .msg.err { color: var(--err); } .msg.warn { color: var(--warn); }
+  .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: var(--err); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.small { padding: 5px 10px; font-size: 13px; }
+  .actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .options { display: grid; gap: 8px; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .opt:hover { border-color: var(--accent); }
+  .opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.off { opacity: .5; cursor: not-allowed; }
+  .opt input { margin-top: 4px; }
+  .opt .t { font-weight: 600; }
+  .opt .d { font-size: 13px; color: var(--muted); word-break: break-all; }
+  .opt .tag { margin-left: 6px; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); font-weight: 600; }
+  .low { color: var(--warn); font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line); }
+  .chip.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+  .chip.bad { background: var(--err-soft); border-color: transparent; color: var(--err); text-decoration: line-through; }
+  .chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 4px; }
+  .list-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .list-tools input { flex: 1; min-width: 180px; }
+  .checklist { max-height: 380px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .checklist label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .checklist label:last-child { border-bottom: 0; }
+  .checklist label:hover { background: var(--bg); }
+  .checklist .d { font-size: 12px; color: var(--muted); }
+  .review { width: 100%; border-collapse: collapse; }
+  .review th, .review td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .review th { width: 170px; color: var(--muted); font-weight: 600; font-size: 14px; }
+  .review td.e { width: 70px; text-align: right; }
+  .linkbtn { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; font-size: 13px; padding: 0; }
+  .banner { padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; font-weight: 600; }
+  .banner.ok { background: var(--ok-soft); color: var(--ok); }
+  .banner.partial { background: var(--warn-soft); color: var(--warn); }
+  .banner.fail { background: var(--err-soft); color: var(--err); }
+  .banner.info { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .creds { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .creds pre { margin: 0; font: 15px/1.7 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-all; user-select: all; }
+  .sigbox { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; }
+  .sigbox h3 { margin: 0 0 4px; font-size: 16px; }
+  .sigbox label.f { margin-top: 10px; }
+  select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+  label.chk { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; cursor: pointer; }
+  .sigprev { margin: 14px 0 10px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+  .sigprev img { display: block; max-width: 100%; height: auto; }
+  a.btn { text-decoration: none; display: inline-block; }
+  .log { margin-top: 16px; max-height: 280px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 12.5px/1.6 Consolas, "Cascadia Mono", monospace; }
+  .log .SUCCESS { color: var(--ok); } .log .ERROR { color: var(--err); } .log .WARN { color: var(--warn); } .log .INFO { color: var(--muted); }
+  .spinner { width: 18px; height: 18px; border: 2.5px solid var(--accent-soft); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .center { text-align: center; padding: 40px 0; }
+  .kbd { font-size: 12px; color: var(--muted); }
+  .pw-wrap { position: relative; }
+  .pw-wrap button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+  ul.req { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+  ul.req li.ok { color: var(--ok); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Provisionamento de Usuários</h1>
+  <span id="hdrMeta" class="meta"></span>
+  <span id="hdrDemo"></span>
+  <span class="spacer"></span>
+  <button class="btn small" data-act="openOff" title="Desligar um usuário (M365 + AD)">Desligamento</button>
+  <button class="btn small" data-act="openSig" title="Gerar assinatura de um usuário que já existe">Só assinatura</button>
+  <button class="btn small danger" id="btnShutdown" title="Encerra o servidor e as sessões Graph/AD">Encerrar</button>
+</header>
+
+<div class="layout">
+  <nav class="steps" id="stepNav" aria-label="Etapas"></nav>
+  <main><div class="card" id="view"><div class="center"><span class="spinner"></span> Carregando dados do M365 e do AD…</div></div></main>
+</div>
+
+<script>
+"use strict";
+
+// ── Sessão (token vem no #t= da URL aberta pelo web.ps1) ─────────────────
+(function () {
+  const m = location.hash.match(/t=([a-f0-9]+)/);
+  if (m) { try { sessionStorage.setItem("prov_token", m[1]); } catch (e) {} window.__tok = m[1]; history.replaceState(null, "", location.pathname); }
+  else { try { window.__tok = sessionStorage.getItem("prov_token") || ""; } catch (e) { window.__tok = ""; } }
+})();
+
+async function api(path, body) {
+  const opt = { method: body === undefined ? "GET" : "POST", headers: { "X-Token": window.__tok } };
+  if (body !== undefined) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({ Ok: false, Errors: ["Resposta inválida do servidor."] }));
+  if (r.status === 401) throw new Error(j.Errors ? j.Errors[0] : "Sessão inválida.");
+  return j;
+}
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
+
+// ── Estado ────────────────────────────────────────────────────────────
+const STEPS = ["Dados do usuário", "OU do Active Directory", "Licença Microsoft 365", "Listas de distribuição", "Grupos Microsoft 365", "Grupos do Active Directory", "Revisão"];
+let cat = null;
+let S;
+function resetState() {
+  S = {
+    step: 0, maxStep: 0, busy: false, result: null,
+    fullName: "", login: "", loginChecked: "", loginOk: false, loginMsg: "", email: "",
+    password: "", password2: "", showPw: false,
+    ouPath: "", ouManual: "",
+    skuId: "",
+    listsText: "", listsCheckedText: null, lists: [], listsInvalid: [], listsMsg: "",
+    m365: new Set(), ad: new Set(), m365Filter: "", adFilter: "",
+    mode: "wizard",   // "wizard", "sig" (assinatura avulsa) ou "off" (desligamento)
+    sig: null,
+    off: { login: "", busy: false, info: null, err: "", confirm: false, res: null }
+  };
+}
+
+// ── Desligamento ──────────────────────────────────────────────────────
+async function offLookup() {
+  const o = S.off, l = o.login.trim().toLowerCase();
+  if (!l) { o.err = "Informe o login."; return render(); }
+  o.busy = true; o.err = ""; o.info = null; o.confirm = false; render();
+  try {
+    const r = await api("/api/offboard-lookup", { login: l });
+    if (r.Ok) o.info = r; else o.err = (r.Errors || ["Usuário não encontrado."]).join(" ");
+  } catch (e) { o.err = e.message; }
+  o.busy = false; render();
+}
+async function offRun() {
+  const o = S.off;
+  o.busy = true; o.err = ""; render();
+  try {
+    const r = await api("/api/offboard", { login: o.info.Login });
+    if (r.Ok) o.res = r; else { o.err = (r.Errors || ["Falha no desligamento."]).join(" "); o.log = r.Log; }
+  } catch (e) { o.err = e.message; }
+  o.busy = false; render();
+}
+function offStep(ok, label, err) {
+  return `<div style="color:var(${ok ? "--ok" : "--err"})">${ok ? "✓" : "✘"} ${esc(label)}${!ok && err ? `<div class="hint">${esc(err)}</div>` : ""}</div>`;
+}
+function offView() {
+  const o = S.off;
+  if (o.res) {
+    const r = o.res, m = r.Result.M365, a = r.Result.AD;
+    const mfaN = m ? m.Mfa.Removed.length : 0;
+    return `<h2>Desligamento — resultado</h2>
+      <div class="banner ${r.Status.Level}">${esc(r.Status.Text)}</div>
+      <div class="creds"><pre id="credsText">${esc(r.Login.toUpperCase())}\n${esc(r.Result.Closing)}</pre>
+        <button class="btn small" data-act="copyOff" id="btnCopy">Copiar</button></div>
+      <table class="review">
+        <tr><th>Microsoft 365</th><td>${m ? offStep(m.Password.Ok, "Senha alterada", m.Password.Error)
+          + offStep(m.Mfa.Ok, `MFA removido (${mfaN} método(s))`, m.Mfa.Error || (m.Mfa.Failed || []).map(f => f.Method + ": " + f.Error).join(" | "))
+          + offStep(m.Sessions.Ok, "Sessões revogadas (logoff)", m.Sessions.Error) : '<span class="hint">Usuário não existe no M365</span>'}</td></tr>
+        <tr><th>Active Directory</th><td>${a ? offStep(a.Password.Ok, "Senha alterada", a.Password.Error)
+          + offStep(a.Disable.Ok, "Conta desabilitada", a.Disable.Error)
+          + offStep(a.Move.Ok, "Movida para Ex-Usuários", a.Move.Error) : '<span class="hint">Usuário não existe no AD</span>'}</td></tr>
+      </table>
+      ${logHtml(r.Log)}
+      <div class="actions"><button class="btn" data-act="closeOff">← Voltar</button><button class="btn primary" data-act="newOff">Desligar outro usuário</button></div>`;
+  }
+  const i = o.info;
+  const st = x => x.Found ? `${esc(x.DisplayName || "")} <span class="hint">(${x.Enabled ? "ativa" : "já desabilitada"})</span>` : '<span class="hint">não encontrado</span>';
+  return `<h2>Desligamento de usuário</h2>
+    <p class="sub">Microsoft 365: altera a senha, remove o MFA e revoga as sessões. AD: altera a senha, desabilita e move para Ex-Usuários.</p>
+    <label class="f" for="offLogin">Login do usuário</label>
+    <div class="row"><input class="grow" type="text" id="offLogin" value="${esc(o.login)}" autocomplete="off" placeholder="Ex.: msouza" ${o.busy ? "disabled" : ""}>
+      <button class="btn small" data-act="offLookup" ${o.busy ? "disabled" : ""}>Buscar</button></div>
+    ${o.busy ? `<div class="msg"><span class="spinner"></span> ${i ? "Desligando… pode levar alguns segundos." : "Buscando…"}</div>` : ""}
+    ${o.err ? `<div class="msg err">${esc(o.err)}</div>` : ""}
+    ${i ? `<table class="review" style="margin-top:16px">
+        <tr><th>E-mail</th><td><b>${esc(i.Email)}</b></td></tr>
+        <tr><th>Microsoft 365</th><td>${st(i.M365)}</td></tr>
+        <tr><th>Active Directory</th><td>${st(i.AD)}${i.AD.Found ? `<div class="hint">${esc(i.AD.DN)}</div>` : ""}</td></tr>
+        <tr><th>Nova senha</th><td>${esc(i.Password)}</td></tr>
+      </table>
+      <div class="banner partial" style="margin-top:16px">Ação irreversível pela interface: a senha atual e o MFA do usuário serão perdidos.</div>
+      <label class="chk"><input type="checkbox" id="offConfirm" ${o.confirm ? "checked" : ""} ${o.busy ? "disabled" : ""}> Confirmo o desligamento de <b>${esc(i.Login)}</b></label>
+      <div class="row" style="margin-top:14px"><button class="btn primary" data-act="offRun" ${o.confirm && !o.busy ? "" : "disabled"}>Desligar usuário</button></div>` : ""}
+    <div class="actions"><button class="btn" data-act="closeOff">← Voltar à criação de usuário</button><span></span></div>`;
+}
+
+// ── Assinatura de e-mail ──────────────────────────────────────────────
+function suggestSigKey(ouPath) {
+  const t = (cat.SignatureTemplates || []).find(t => t.OUMatch && (ouPath || "").includes(t.OUMatch));
+  const sp = (cat.SignatureTemplates || []).find(t => t.Key === "SP");
+  return (t || sp || (cat.SignatureTemplates || [])[0] || {}).Key || "";
+}
+function ensureSig(name, login, ouPath) {
+  if (!S.sig) S.sig = { key: suggestSigKey(ouPath), name: name || "", login: login || "", save: !cat.Demo, busy: false, res: null, err: "" };
+  return S.sig;
+}
+function sigPanel(standalone) {
+  const g = S.sig, tpls = cat.SignatureTemplates || [];
+  if (!tpls.length) return "";
+  const tpl = tpls.find(t => t.Key === g.key);
+  return `<div class="sigbox">
+    ${standalone ? "" : "<h3>Assinatura de e-mail</h3>"}
+    <div class="row">
+      <div class="grow"><label class="f" for="sigName">Nome na assinatura</label>
+        <input type="text" id="sigName" value="${esc(g.name)}"></div>
+      ${standalone ? `<div style="width:200px"><label class="f" for="sigLogin">Login</label>
+        <input type="text" id="sigLogin" value="${esc(g.login)}" placeholder="ex.: asouza"></div>` : ""}
+      <div style="width:200px"><label class="f" for="sigKey">Modelo</label>
+        <select id="sigKey">${tpls.map(t => `<option value="${esc(t.Key)}" ${t.Key === g.key ? "selected" : ""}>${esc(t.Label)}</option>`).join("")}</select></div>
+    </div>
+    <div class="hint">E-mail: <b>${esc((g.login || "login").toLowerCase())}@${esc(cat.Domain)}</b></div>
+    <label class="chk"><input type="checkbox" id="sigSave" ${g.save ? "checked" : ""} ${cat.Demo ? "disabled" : ""}>
+      Salvar cópia na rede${tpl ? `: <span class="hint">${esc(tpl.SaveFolder)}</span>` : ""}${cat.Demo ? " (desativado no modo demo)" : ""}</label>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary" data-act="genSig" ${g.busy ? "disabled" : ""}>${g.res ? "Gerar novamente" : "Gerar assinatura"}</button>
+      ${g.busy ? `<span><span class="spinner"></span> Gerando no CorelDRAW… (~15 s)</span>` : ""}
+    </div>
+    ${g.err ? `<div class="msg err">${esc(g.err)}</div>` : ""}
+    ${g.res ? `<div class="sigprev"><img alt="Prévia da assinatura" src="data:image/png;base64,${g.res.Png}"></div>
+      <div class="row">
+        <a class="btn primary" download="${esc(g.res.FileName)}" href="data:image/png;base64,${g.res.Png}">⬇ Baixar ${esc(g.res.FileName)}</a>
+        ${g.res.Network ? `<span class="msg ${g.res.Network.Ok ? "ok" : "warn"}">${esc(g.res.Network.Message)}</span>` : ""}
+      </div>` : ""}
+  </div>`;
+}
+async function genSig() {
+  const g = S.sig;
+  if (!g.name.trim()) { g.err = "Informe o nome."; return render(); }
+  if (!/^[a-zA-Z0-9_\-.]{3,20}$/.test(g.login.trim())) { g.err = "Informe um login válido."; return render(); }
+  g.busy = true; g.err = ""; render();
+  try {
+    const r = await api("/api/signature", { key: g.key, fullName: g.name.trim(), login: g.login.trim(), saveNetwork: g.save && !cat.Demo });
+    if (r.Ok) g.res = r; else g.err = (r.Errors || ["Falha ao gerar."]).join(" ");
+  } catch (err) { g.err = err.message; }
+  g.busy = false; render();
+}
+resetState();
+
+// ── Validações ───────────────────────────────────────────────────────
+const pwRules = [
+  [p => p.length >= 8, "8 ou mais caracteres"],
+  [p => /[A-Z]/.test(p), "1 letra maiúscula"],
+  [p => /[a-z]/.test(p), "1 letra minúscula"],
+  [p => /[0-9]/.test(p), "1 número"],
+  [p => /[^A-Za-z0-9]/.test(p), "1 caractere especial"]
+];
+const pwOk = p => pwRules.every(([f]) => f(p));
+
+async function checkLogin() {
+  const l = S.login.trim().toLowerCase();
+  if (!l) { S.loginOk = false; S.loginMsg = ""; return false; }
+  if (S.loginChecked === l) return S.loginOk;
+  S.loginMsg = "verificando…"; paintLoginMsg("");
+  const r = await api("/api/check-login", { login: l });
+  S.loginChecked = l; S.loginOk = !!r.Ok; S.loginMsg = r.Message; S.email = r.Email || "";
+  paintLoginMsg(r.Ok ? "ok" : "err");
+  return S.loginOk;
+}
+function paintLoginMsg(cls) {
+  const el = $("loginMsg"); if (!el) return;
+  el.className = "msg " + cls;
+  el.textContent = S.loginOk && S.email ? `${S.loginMsg} E-mail: ${S.email}` : S.loginMsg;
+}
+
+async function checkLists() {
+  const text = S.listsText.trim();
+  if (!text) { S.lists = []; S.listsInvalid = []; S.listsCheckedText = ""; return; }
+  S.listsMsg = "verificando no Exchange Online…"; render();
+  const r = await api("/api/check-lists", { text });
+  // Mantém as já verificadas que não foram removidas e acrescenta as novas
+  S.lists = (r.Lists || []).map(x => ({ address: x.Address, exists: !!x.Exists, name: x.Name }));
+  S.listsInvalid = r.Invalid || [];
+  S.listsCheckedText = text;
+  S.listsMsg = "";
+}
+
+async function validateStep(i) {
+  if (i === 0) {
+    if (!S.fullName.trim()) return "Informe o nome completo.";
+    if (!(await checkLogin())) return S.loginMsg || "Informe um login válido.";
+    if (!pwOk(S.password)) return "A senha não atende aos requisitos.";
+    if (S.password !== S.password2) return "As senhas não coincidem.";
+  }
+  if (i === 1 && !S.ouPath) return "Selecione a OU.";
+  if (i === 2) {
+    const lic = (cat.Licenses || []).find(l => l.SkuId === S.skuId);
+    if (!lic) return "Selecione uma licença.";
+    if (lic.Available <= 0) return "Licença sem unidades disponíveis.";
+  }
+  if (i === 3 && S.listsText.trim() !== (S.listsCheckedText ?? "")) await checkLists();
+  return null;
+}
+
+// ── Navegação ────────────────────────────────────────────────────────
+async function go(target) {
+  if (S.busy) return;
+  if (target > S.step) {
+    // valida todas as etapas entre a atual e o destino
+    for (let i = S.step; i < target; i++) {
+      S.busy = true;
+      let err;
+      try { err = await validateStep(i); } catch (e) { err = e.message; } finally { S.busy = false; }
+      if (err) { S.step = i; render(); showError(err); return; }
+    }
+  }
+  S.step = target;
+  S.maxStep = Math.max(S.maxStep, target);
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function showError(msg) {
+  const el = $("stepError"); if (el) { el.textContent = msg; el.className = "msg err"; el.scrollIntoView({ block: "nearest" }); }
+}
+
+// ── Renderização ─────────────────────────────────────────────────────
+function renderNav() {
+  const done = S.result !== null || S.mode !== "wizard";
+  $("stepNav").innerHTML = STEPS.map((t, i) => {
+    const cls = [i === S.step && !done ? "active" : "", i < S.maxStep || done ? "done" : ""].join(" ");
+    const dis = done || i > S.maxStep || S.busy ? "disabled" : "";
+    return `<button class="${cls}" ${dis} data-go="${i}"><span class="num">${i < S.maxStep || done ? "✓" : i + 1}</span><span class="lbl">${esc(t)}</span></button>`;
+  }).join("");
+}
+
+function actions({ next = "Avançar", back = true } = {}) {
+  return `<div id="stepError" class="msg"></div>
+  <div class="actions">
+    <button class="btn" data-act="back" ${back && S.step > 0 ? "" : "disabled"}>← Voltar</button>
+    <button class="btn primary" data-act="next">${next}</button>
+  </div>`;
+}
+
+const views = {
+  0() {
+    const pw = S.password;
+    return `<h2>Dados do usuário</h2><p class="sub">O e-mail é gerado a partir do login: <b>login@${esc(cat.Domain)}</b></p>
+      <label class="f" for="fullName">Nome completo</label>
+      <input type="text" id="fullName" value="${esc(S.fullName)}" autocomplete="off" placeholder="Ex.: Maria Souza">
+      <label class="f" for="login">Login</label>
+      <div class="row"><input class="grow" type="text" id="login" value="${esc(S.login)}" autocomplete="off" placeholder="Ex.: msouza">
+        <button class="btn small" data-act="checkLogin">Verificar</button></div>
+      <div id="loginMsg" class="msg ${S.loginChecked ? (S.loginOk ? "ok" : "err") : ""}">${esc(S.loginOk && S.email ? `${S.loginMsg} E-mail: ${S.email}` : S.loginMsg)}</div>
+      <label class="f" for="pw1">Senha inicial</label>
+      <div class="pw-wrap"><input type="${S.showPw ? "text" : "password"}" id="pw1" value="${esc(pw)}" autocomplete="new-password">
+        <button class="btn small" data-act="togglePw" type="button">${S.showPw ? "Ocultar" : "Mostrar"}</button></div>
+      <ul class="req" id="pwReq">${pwRules.map(([f, t]) => `<li class="${f(pw) ? "ok" : ""}">${f(pw) ? "✓" : "•"} ${t}</li>`).join("")}</ul>
+      <label class="f" for="pw2">Confirme a senha</label>
+      <input type="${S.showPw ? "text" : "password"}" id="pw2" value="${esc(S.password2)}" autocomplete="new-password">
+      <div id="pwMatch" class="msg"></div>
+      ${actions()}`;
+  },
+  1() {
+    const known = cat.OUs.some(o => o.DN === S.ouPath);
+    return `<h2>OU do Active Directory</h2><p class="sub">Onde a conta será criada no AD local.</p>
+      <div class="options">${cat.OUs.map(o => `
+        <label class="opt ${S.ouPath === o.DN ? "sel" : ""}"><input type="radio" name="ou" value="${esc(o.DN)}" ${S.ouPath === o.DN ? "checked" : ""}>
+          <div><div class="t">${esc(o.Label)}</div><div class="d">${esc(o.DN)}</div></div></label>`).join("")}
+        <label class="opt ${S.ouPath && !known ? "sel" : ""}"><input type="radio" name="ou" value="__manual" ${S.ouPath && !known ? "checked" : ""}>
+          <div style="flex:1"><div class="t">Outro caminho (digitar DN)</div>
+          <input type="text" id="ouManual" value="${esc(S.ouManual || (!known ? S.ouPath : ""))}" placeholder="OU=...,DC=corp,DC=contoso,DC=local" style="margin-top:6px"></div></label>
+      </div>${actions()}`;
+  },
+  2() {
+    const lic = cat.Licenses || [];
+    if (!lic.length) return `<h2>Licença Microsoft 365</h2><div class="banner fail">${esc(cat.LicenseError || "Nenhuma licença com unidades disponíveis.")}</div>
+      <button class="btn small" data-act="reloadCatalog">Recarregar</button>${actions()}`;
+    return `<h2>Licença Microsoft 365</h2><p class="sub">Somente licenças com unidades livres.</p>
+      <div class="options">${lic.map(l => `
+        <label class="opt ${S.skuId === l.SkuId ? "sel" : ""} ${l.Available <= 0 ? "off" : ""}"><input type="radio" name="lic" value="${esc(l.SkuId)}" ${S.skuId === l.SkuId ? "checked" : ""} ${l.Available <= 0 ? "disabled" : ""}>
+          <div><div class="t">${esc(l.Friendly)}</div>
+          <div class="d"><span class="${l.Available <= 2 ? "low" : ""}">${l.Available} disponíve${l.Available === 1 ? "l" : "is"}</span> de ${l.Total} · ${esc(l.SkuPart)}</div></div></label>`).join("")}
+      </div>
+      <div class="hint"><button class="linkbtn" data-act="reloadCatalog">Atualizar contagem</button></div>${actions()}`;
+  },
+  3() {
+    const found = S.lists.filter(l => l.exists), missing = S.lists.filter(l => !l.exists);
+    const dirty = S.listsText.trim() !== (S.listsCheckedText ?? "");
+    return `<h2>Listas de distribuição</h2>
+      <p class="sub">Separe com vírgula, ponto e vírgula, espaço ou uma por linha. Pode usar só o alias (ex.: <code>todos; sp; equipe.vendas</code>) ou colar do Outlook (<code>Todos &lt;todos@${esc(cat.Domain)}&gt;;</code>).</p>
+      <textarea id="listsText" placeholder="todos@${esc(cat.Domain)}; sp@${esc(cat.Domain)}&#10;equipe.vendas">${esc(S.listsText)}</textarea>
+      <div class="row" style="margin-top:8px"><button class="btn small" data-act="checkLists">Verificar listas</button>
+        <span class="msg ${S.listsMsg ? "" : "warn"}" id="listsState">${S.listsMsg ? `<span class="spinner"></span> ${esc(S.listsMsg)}` : (dirty && S.listsText.trim() ? "Texto alterado — será verificado ao avançar." : "")}</span></div>
+      ${S.lists.length || S.listsInvalid.length ? `<div class="chips">
+        ${found.map(l => `<span class="chip ok" title="${esc(l.name || "")}">✓ ${esc(l.address)}<button data-rm="${esc(l.address)}" title="Remover">×</button></span>`).join("")}
+        ${missing.map(l => `<span class="chip bad" title="Não encontrada no Exchange">${esc(l.address)}<button data-rm="${esc(l.address)}" title="Remover">×</button></span>`).join("")}
+        ${S.listsInvalid.map(x => `<span class="chip bad" title="Formato inválido">${esc(x)}</span>`).join("")}
+      </div>
+      ${missing.length || S.listsInvalid.length ? `<div class="msg warn">Itens riscados não foram encontrados ou são inválidos e <b>serão ignorados</b>.</div>` : ""}
+      <div class="hint">${found.length} lista(s) serão aplicadas.</div>` : `<div class="hint">Deixe em branco para não adicionar a nenhuma lista.</div>`}
+      ${actions()}`;
+  },
+  4() { return groupView("Grupos Microsoft 365", "Grupos do Entra ID (Microsoft 365 e segurança).", cat.M365Groups, S.m365, "m365", g => g.Id, g => g.Name, g => g.Type); },
+  5() { return groupView("Grupos do Active Directory", "Grupos operacionais do AD local (grupos internos do Windows já foram ocultados).", cat.ADGroups, S.ad, "ad", g => g.Name, g => g.Name, null, g => g.Description); },
+  6() {
+    const lic = (cat.Licenses || []).find(l => l.SkuId === S.skuId);
+    const ou = cat.OUs.find(o => o.DN === S.ouPath);
+    const lists = S.lists.filter(l => l.exists).map(l => l.address);
+    const m365 = cat.M365Groups.filter(g => S.m365.has(g.Id)).map(g => g.Name);
+    const ad = [...S.ad];
+    const none = '<span style="color:var(--muted)">(nenhum)</span>';
+    const row = (lbl, val, step) => `<tr><th>${lbl}</th><td>${val}</td><td class="e"><button class="linkbtn" data-go="${step}">Editar</button></td></tr>`;
+    return `<h2>Revisão</h2><p class="sub">Nada foi criado ainda. Confira e clique em <b>Criar usuário</b>.</p>
+      ${cat.Demo ? `<div class="banner info">Modo demonstração: a criação será apenas simulada.</div>` : ""}
+      <table class="review">
+        ${row("Nome", esc(S.fullName), 0)}
+        ${row("Login / e-mail", `${esc(S.login.toLowerCase())} → <b>${esc(S.email)}</b>`, 0)}
+        ${row("Senha", "••••••••", 0)}
+        ${row("OU", `${esc(ou ? ou.Label : "(manual)")}<div class="hint">${esc(S.ouPath)}</div>`, 1)}
+        ${row("Licença", esc(lic ? lic.Friendly : ""), 2)}
+        ${row("Listas", lists.length ? lists.map(esc).join("<br>") : none, 3)}
+        ${row("Grupos M365", m365.length ? m365.map(esc).join("<br>") : none, 4)}
+        ${row("Grupos AD", ad.length ? ad.map(esc).join("<br>") : none, 5)}
+      </table>
+      <div class="hint" style="margin-top:12px">A criação pode levar alguns minutos: o script aguarda a caixa de correio existir no Exchange antes de adicionar às listas.</div>
+      ${actions({ next: "Criar usuário" })}`;
+  },
+  running() {
+    return `<div class="center"><span class="spinner"></span>
+      <h2 style="margin-top:14px">Criando ${esc(S.fullName)}…</h2>
+      <p class="sub">Não feche esta página. Pode levar alguns minutos (propagação do Entra ID e criação da caixa no Exchange).</p></div>`;
+  },
+  result() {
+    const r = S.result;
+    if (!r.Ok) {
+      return `<h2>Não foi possível criar</h2><div class="banner fail">${(r.Errors || []).map(esc).join("<br>")}</div>
+        ${logHtml(r.Log)}<div class="actions"><button class="btn" data-go="6">← Voltar à revisão</button><span></span></div>`;
+    }
+    const st = r.Status, res = r.Result;
+    const sec = (title, d) => {
+      const added = d.Added || [], failed = d.Failed || [];
+      if (!added.length && !failed.length) return "";
+      return `<tr><th>${title}</th><td>${added.map(a => `<div style="color:var(--ok)">✓ ${esc(a)}</div>`).join("")}
+        ${failed.map(f => `<div style="color:var(--err)">✘ ${esc(f.Group)}<div class="hint">${esc(f.Error)}</div></div>`).join("")}</td></tr>`;
+    };
+    const svc = (ok, txt) => `<span style="color:var(${ok ? "--ok" : "--err"})">${ok ? "✓" : "✘"} ${txt}</span>`;
+    return `<h2>Resultado</h2>
+      <div class="banner ${st.Level}">${esc(st.Text)}</div>
+      ${S.creds ? `<div class="creds">
+        <pre id="credsText">${esc(S.creds)}</pre>
+        <button class="btn small" data-act="copyCreds" id="btnCopy">Copiar</button>
+      </div>` : ""}
+      <table class="review">
+        <tr><th>Usuário</th><td>${esc(r.User.FullName)} — <b>${esc(r.User.Email)}</b><div class="hint">${esc(r.User.OU)}</div></td></tr>
+        <tr><th>Microsoft 365</th><td>${svc(res.M365.Success, "Conta")} &nbsp; ${svc(res.M365.LicenseApplied, "Licença " + esc(r.User.License))}
+          ${res.M365.Error ? `<div class="hint">${esc(res.M365.Error)}</div>` : ""}</td></tr>
+        <tr><th>Active Directory</th><td>${svc(res.AD.Success, "Conta")}${res.AD.Error ? `<div class="hint">${esc(res.AD.Error)}</div>` : ""}</td></tr>
+        ${sec("Listas", res.DistributionLists)}${sec("Grupos M365", res.M365Groups)}${sec("Grupos AD", res.ADGroups)}
+      </table>
+      ${(ensureSig(r.User.FullName, r.User.Login, r.User.OU), sigPanel(false))}
+      ${logHtml(r.Log)}
+      <div class="actions"><span></span><button class="btn primary" data-act="newUser">Criar outro usuário</button></div>`;
+  },
+  sigOnly() {
+    ensureSig("", "", "");
+    return `<h2>Assinatura de e-mail</h2>
+      <p class="sub">Gere a assinatura de um usuário que já existe, sem criar conta.</p>
+      ${sigPanel(true)}
+      <div class="actions"><button class="btn" data-act="closeSig">← Voltar à criação de usuário</button><span></span></div>`;
+  }
+};
+
+function logHtml(log) {
+  if (!log || !log.length) return "";
+  return `<details style="margin-top:16px"><summary class="kbd" style="cursor:pointer">Log desta criação (${log.length} linhas)</summary>
+    <div class="log">${log.map(l => `<div class="${esc(l.Level)}">[${esc(l.Time)}] ${esc(l.Message)}</div>`).join("")}</div></details>`;
+}
+
+function groupView(title, sub, items, set, key, idOf, nameOf, typeOf, descOf) {
+  const f = (key === "m365" ? S.m365Filter : S.adFilter).toLowerCase();
+  const shown = items.filter(g => !f || nameOf(g).toLowerCase().includes(f) || (descOf && (descOf(g) || "").toLowerCase().includes(f)));
+  return `<h2>${title}</h2><p class="sub">${sub}</p>
+    <div class="list-tools"><input type="search" id="flt" data-k="${key}" placeholder="Filtrar…" value="${esc(f)}">
+      <span class="kbd"><b id="selCount">${set.size}</b> selecionado(s)</span>
+      <button class="linkbtn" data-act="clearSel" data-k="${key}">Limpar seleção</button></div>
+    ${items.length ? `<div class="checklist">${shown.map(g => `
+      <label><input type="checkbox" data-k="${key}" value="${esc(idOf(g))}" ${set.has(idOf(g)) ? "checked" : ""}>
+        <div><div>${esc(nameOf(g))}${typeOf ? `<span class="opt"><span class="tag">${esc(typeOf(g))}</span></span>` : ""}</div>
+        ${descOf && descOf(g) ? `<div class="d">${esc(descOf(g))}</div>` : ""}</div></label>`).join("") || `<div class="hint" style="padding:12px">Nenhum grupo corresponde ao filtro.</div>`}</div>`
+      : `<div class="banner partial">Nenhum grupo disponível.</div>`}
+    ${actions()}`;
+}
+
+function render() {
+  renderNav();
+  let html;
+  if (S.mode === "off") html = offView();
+  else if (S.mode === "sig") html = views.sigOnly();
+  else if (S.result === "running") html = views.running();
+  else if (S.result) html = views.result();
+  else html = views[S.step]();
+  $("view").innerHTML = html;
+  const first = $("view").querySelector("input[type=text], textarea");
+  if (first && S.result === null && !first.value) first.focus();
+}
+
+// ── Eventos ──────────────────────────────────────────────────────────
+document.addEventListener("input", e => {
+  const t = e.target;
+  const se = $("stepError"); if (se && t.id !== "flt") se.textContent = "";
+  if (t.id === "offLogin") { S.off.login = t.value; return; }
+  if (t.id === "sigName") { S.sig.name = t.value; return; }
+  if (t.id === "sigLogin") { S.sig.login = t.value; return; }
+  if (t.id === "fullName") S.fullName = t.value;
+  if (t.id === "login") { S.login = t.value; S.loginChecked = ""; S.loginOk = false; S.loginMsg = ""; paintLoginMsg(""); }
+  if (t.id === "pw1" || t.id === "pw2") {
+    if (t.id === "pw1") S.password = t.value; else S.password2 = t.value;
+    $("pwReq").innerHTML = pwRules.map(([f, tx]) => `<li class="${f(S.password) ? "ok" : ""}">${f(S.password) ? "✓" : "•"} ${tx}</li>`).join("");
+    const m = $("pwMatch");
+    if (S.password2) { m.className = "msg " + (S.password === S.password2 ? "ok" : "err"); m.textContent = S.password === S.password2 ? "Senhas coincidem." : "As senhas não coincidem."; }
+    else m.textContent = "";
+  }
+  if (t.id === "ouManual") { S.ouManual = t.value; S.ouPath = t.value.trim(); const r = document.querySelector('input[name=ou][value="__manual"]'); if (r) r.checked = true; }
+  if (t.id === "listsText") { S.listsText = t.value; const el = $("listsState"); if (el && !S.listsMsg) el.textContent = t.value.trim() !== (S.listsCheckedText ?? "") && t.value.trim() ? "Texto alterado — será verificado ao avançar." : ""; }
+  if (t.id === "flt") { if (t.dataset.k === "m365") S.m365Filter = t.value; else S.adFilter = t.value; const pos = t.selectionStart; render(); const n = $("flt"); n.focus(); n.setSelectionRange(pos, pos); }
+});
+
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "offConfirm") { S.off.confirm = t.checked; return render(); }
+  if (t.id === "sigKey") { S.sig.key = t.value; return render(); }
+  if (t.id === "sigSave") { S.sig.save = t.checked; return; }
+  if (t.id === "sigLogin") { return render(); }   // atualiza o e-mail exibido
+  if (t.name === "ou") { S.ouPath = t.value === "__manual" ? (S.ouManual || "").trim() : t.value; render(); if (t.value === "__manual") $("ouManual").focus(); }
+  if (t.name === "lic") { S.skuId = t.value; render(); }
+  if (t.type === "checkbox" && t.dataset.k) {
+    const set = t.dataset.k === "m365" ? S.m365 : S.ad;
+    t.checked ? set.add(t.value) : set.delete(t.value);
+    $("selCount").textContent = set.size;
+  }
+});
+
+document.addEventListener("focusout", e => {
+  if (e.target.id === "login" && S.login.trim()) checkLogin().catch(err => { S.loginMsg = err.message; paintLoginMsg("err"); });
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.id === "offLogin") { e.preventDefault(); offLookup(); return; }
+  if (e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type !== "search" && S.result === null && S.mode === "wizard") { e.preventDefault(); onNext(); }
+});
+
+async function onNext() {
+  if (S.step < STEPS.length - 1) return go(S.step + 1);
+  // Revisão → criar
+  for (let i = 0; i < STEPS.length - 1; i++) { const err = await validateStep(i); if (err) { S.step = i; render(); showError(err); return; } }
+  S.result = "running"; S.busy = true; render();
+  try {
+    const lic = cat.Licenses.find(l => l.SkuId === S.skuId);
+    S.result = await api("/api/provision", {
+      fullName: S.fullName.trim(), login: S.login.trim().toLowerCase(), password: S.password,
+      ouPath: S.ouPath, skuId: lic.SkuId,
+      lists: S.lists.filter(l => l.exists).map(l => l.address),
+      m365GroupIds: [...S.m365], adGroups: [...S.ad]
+    });
+  } catch (err) {
+    S.result = { Ok: false, Errors: [err.message] };
+  } finally { S.busy = false; }
+  if (S.result.Ok) {
+    // Guarda só no navegador para o bloco de credenciais (o servidor não devolve a senha)
+    S.creds = `Usuário: ${S.result.User.Login.toUpperCase()}\nSenha: ${S.password}\nE-mail: ${S.result.User.Email}`;
+    S.password = S.password2 = "";
+  }
+  render();
+  reloadCatalog(false);
+}
+
+async function reloadCatalog(full) {
+  const c = await api("/api/catalog" + (full ? "?refresh=1" : ""));
+  if (c.Ok) { cat = c; if (S.result === null) render(); }
+}
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-go],[data-act],[data-rm]");
+  if (!b || b.disabled) return;
+  if (b.dataset.go !== undefined) { if (S.result && S.result !== "running" && !S.result.Ok) S.result = null; return go(+b.dataset.go); }
+  if (b.dataset.rm) {
+    S.lists = S.lists.filter(l => l.address !== b.dataset.rm);
+    S.listsText = S.lists.map(l => l.address).join("; "); S.listsCheckedText = S.listsText; return render();
+  }
+  switch (b.dataset.act) {
+    case "back": return go(S.step - 1);
+    case "next": return onNext();
+    case "checkLogin": S.loginChecked = ""; try { await checkLogin(); } catch (err) { S.loginMsg = err.message; paintLoginMsg("err"); } return;
+    case "togglePw": S.showPw = !S.showPw; return render();
+    case "checkLists": try { await checkLists(); } catch (err) { S.listsMsg = ""; render(); return showError(err.message); } return render();
+    case "clearSel": (b.dataset.k === "m365" ? S.m365 : S.ad).clear(); return render();
+    case "reloadCatalog": b.disabled = true; await reloadCatalog(true); return;
+    case "newUser": resetState(); return render();
+    case "genSig": return genSig();
+    case "openOff": if (S.result === "running" || S.off.busy) return; S.mode = "off"; S.off = { login: "", busy: false, info: null, err: "", confirm: false, res: null }; return render();
+    case "closeOff": if (S.off.busy) return; S.mode = "wizard"; return render();
+    case "newOff": S.off = { login: "", busy: false, info: null, err: "", confirm: false, res: null }; return render();
+    case "offLookup": return offLookup();
+    case "offRun": if (!S.off.confirm || S.off.busy) return; return offRun();
+    case "copyOff": {
+      const txt = `${S.off.res.Login.toUpperCase()}\n${S.off.res.Result.Closing}`;
+      let ok = false;
+      try { await navigator.clipboard.writeText(S.off.res.Result.Closing); ok = true; } catch (err) {
+        const r = document.createRange(); r.selectNodeContents($("credsText"));
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        ok = document.execCommand("copy"); sel.removeAllRanges();
+      }
+      b.textContent = ok ? "Copiado ✓" : "Selecione e copie (Ctrl+C)";
+      setTimeout(() => { const x = $("btnCopy"); if (x) x.textContent = "Copiar"; }, 2000);
+      return;
+    }
+    case "openSig": if (S.result === "running") return; S.mode = "sig"; S.sig = null; return render();
+    case "closeSig": S.mode = "wizard"; S.sig = null; return render();
+    case "copyCreds": {
+      let ok = false;
+      try { await navigator.clipboard.writeText(S.creds); ok = true; } catch (err) {
+        // alternativa caso a área de transferência moderna não esteja disponível
+        const r = document.createRange(); r.selectNodeContents($("credsText"));
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        ok = document.execCommand("copy"); sel.removeAllRanges();
+      }
+      b.textContent = ok ? "Copiado ✓" : "Selecione e copie (Ctrl+C)";
+      setTimeout(() => { const x = $("btnCopy"); if (x) x.textContent = "Copiar"; }, 2000);
+      return;
+    }
+  }
+});
+
+$("btnShutdown").addEventListener("click", async () => {
+  if (!confirm("Encerrar o servidor? As sessões do Microsoft 365 e do AD serão desconectadas.")) return;
+  try { await api("/api/shutdown", {}); } catch (e) {}
+  document.body.innerHTML = '<div class="center" style="padding:80px 16px"><h2>Servidor encerrado</h2><p class="sub">Pode fechar esta aba. Para usar de novo, execute <code>web.ps1</code>.</p></div>';
+});
+
+window.addEventListener("beforeunload", e => { if (S.result === "running") { e.preventDefault(); e.returnValue = ""; } });
+
+// ── Início ──────────────────────────────────────────────────────────
+(async () => {
+  try {
+    cat = await api("/api/catalog");
+    if (!cat.Ok) throw new Error((cat.Errors || ["Falha ao carregar."])[0]);
+    $("hdrMeta").textContent = `Operador: ${cat.Operator} · DC: ${cat.ADServer}`;
+    if (cat.Demo) $("hdrDemo").innerHTML = '<span class="badge demo">MODO DEMO</span>';
+    render();
+  } catch (err) {
+    $("view").innerHTML = `<div class="banner fail">${esc(err.message)}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
