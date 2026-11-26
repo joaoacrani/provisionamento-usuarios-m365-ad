@@ -215,3 +215,7 @@ O `web.ps1` faz o login no Microsoft 365, conecta ao AD e abre o navegador em `h
 - [ ] Relatório HTML de auditoria
 - [ ] Azure Key Vault para as credenciais
 - [ ] Testes automatizados (Pester)
+
+## Licença
+
+MIT. Veja o arquivo [LICENSE](LICENSE).
