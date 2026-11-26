@@ -1,5 +1,7 @@
 # Provisionamento de Usuários: Microsoft 365 e Active Directory
 
+[![Sintaxe](https://github.com/joaoacrani/provisionamento-usuarios-m365-ad/actions/workflows/sintaxe.yml/badge.svg)](https://github.com/joaoacrani/provisionamento-usuarios-m365-ad/actions/workflows/sintaxe.yml) ![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green) ![PowerShell 7](https://img.shields.io/badge/PowerShell%207-5391FE?logo=powershell&logoColor=white) ![Microsoft Graph](https://img.shields.io/badge/Microsoft%20Graph-0078D4?logo=microsoft&logoColor=white) ![Active Directory](https://img.shields.io/badge/Active%20Directory-0078D4?logo=windows&logoColor=white)
+
 ## Sumário
 
 1. [Objetivo](#1-objetivo)
